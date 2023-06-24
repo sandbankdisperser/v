@@ -33,49 +33,125 @@ fn test_sqlite() {
 	$if !linux {
 		return
 	}
-	mut db := sqlite.connect(':memory:') or { panic(err) }
+	mut db := sqlite.connect(':memory:') or {
+		println(err)
+		assert false
+		return
+	}
 	assert db.is_open
-	db.exec('drop table if exists users')
-	db.exec("create table users (id integer primary key, name text default '');")
-	db.exec("insert into users (name) values ('Sam')")
+	defer {
+		db.close() or {
+			println(err)
+			assert false
+		}
+		assert !db.is_open
+	}
+
+	db.exec('drop table if exists users') or {
+		println(err)
+		assert false
+		return
+	}
+	db.exec("create table users (id integer primary key, name text default '');") or {
+		println(err)
+		assert false
+		return
+	}
+	db.exec("insert into users (name) values ('Sam')") or {
+		println(err)
+		assert false
+		return
+	}
 	assert db.last_insert_rowid() == 1
 	assert db.get_affected_rows_count() == 1
-	db.exec("insert into users (name) values ('Peter')")
+	db.exec("insert into users (name) values ('Peter')") or {
+		println(err)
+		assert false
+		return
+	}
 	assert db.last_insert_rowid() == 2
-	db.exec("insert into users (name) values ('Kate')")
+	db.exec("insert into users (name) values ('Kate')") or {
+		println(err)
+		assert false
+		return
+	}
 	assert db.last_insert_rowid() == 3
-	nr_users := db.q_int('select count(*) from users')
+	nr_users := db.q_int('select count(*) from users') or {
+		println(err)
+		assert false
+		return
+	}
 	assert nr_users == 3
-	name := db.q_string('select name from users where id = 1')
+	name := db.q_string('select name from users where id = 1') or {
+		println(err)
+		assert false
+		return
+	}
 	assert name == 'Sam'
 
 	// this insert will be rejected due to duplicated id
-	db.exec("insert into users (id,name) values (1,'Sam')")
+	if rows := db.exec("insert into users (id,name) values (1,'Sam')") {
+		panic('insert succedded when it should have failed')
+	}
 	assert db.get_affected_rows_count() == 0
 
-	users, mut code := db.exec('select * from users')
+	users := db.exec('select * from users') or {
+		println(err)
+		assert false
+		return
+	}
 	assert users.len == 3
-	assert code == 101
-	code = db.exec_none('vacuum')
-	assert code == 101
-	user := db.exec_one('select * from users where id = 3') or { panic(err) }
-	println(user)
+
+	db.exec_none('vacuum') or {
+		println(err)
+		assert false
+		return
+	}
+
+	user := db.exec_one('select * from users where id = 3') or {
+		println(err)
+		assert false
+		return
+	}
 	assert user.vals.len == 2
 
-	db.exec("update users set name='zzzz' where name='qqqq'")
+	db.exec("update users set name='zzzz' where name='qqqq'") or {
+		println(err)
+		assert false
+		return
+	}
 	assert db.get_affected_rows_count() == 0
 
-	db.exec("update users set name='Peter1' where name='Peter'")
+	db.exec("update users set name='Peter1' where name='Peter'") or {
+		println(err)
+		assert false
+		return
+	}
 	assert db.get_affected_rows_count() == 1
 
-	db.exec("delete from users where name='qqqq'")
+	db.exec_params('insert into users VALUES (?,?)', 100, 'Peter3') or {
+		println(err)
+		assert false
+		return
+	}
+
+	db.exec('select * from users where name="Peter3333" and id=100') or {
+		println(err)
+		assert false
+	}
+
+	db.exec("delete from users where name='qqqq'") or {
+		println(err)
+		assert false
+	}
 	assert db.get_affected_rows_count() == 0
 
-	db.exec("delete from users where name='Sam'")
+	db.exec("delete from users where name='Sam'") or {
+		println(err)
+		assert false
+		return
+	}
 	assert db.get_affected_rows_count() == 1
-
-	db.close() or { panic(err) }
-	assert !db.is_open
 }
 
 fn test_can_access_sqlite_result_consts() {

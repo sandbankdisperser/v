@@ -103,11 +103,14 @@ fn test_sqlite_orm() {
 		create table TestCustomSqlType
 	}!
 
-	mut result_custom_sql, mut exec_custom_code := db.exec('
+	mut result_custom_sql := db.exec('
 		pragma table_info(TestCustomSqlType);
-	')
+	') or {
+		println('could not set pragma: ${err}')
+		assert false
+		return
+	}
 
-	assert exec_custom_code == 101
 	mut table_info_types_results := []string{}
 	information_schema_custom_sql := ['INTEGER', 'INTEGER', 'TEXT', 'REAL', 'NUMERIC', 'TEXT',
 		'INTEGER', 'INTEGER']
@@ -128,11 +131,14 @@ fn test_sqlite_orm() {
 		create table TestDefaultAtribute
 	}!
 
-	mut result_default_sql, mut code := db.exec('
+	mut result_default_sql := db.exec('
 			pragma table_info(TestDefaultAtribute);
-		')
+		') or {
+		println('could not set pragma: ${err}')
+		assert false
+		return
+	}
 
-	assert code == 101
 	mut information_schema_data_types_results := []string{}
 	information_schema_default_sql := ['', '', 'CURRENT_TIME', 'CURRENT_DATE', 'CURRENT_TIMESTAMP']
 
@@ -176,7 +182,11 @@ fn test_get_affected_rows_count() {
 	db.exec('create table EntityToTest(
 		id integer not null constraint tbl_pk primary key,
 		smth  integer
-	);')
+	);') or {
+		println('could not set pragma: ${err}')
+		assert false
+		return
+	}
 
 	fst := EntityToTest{
 		id: 1
